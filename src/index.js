@@ -1,23 +1,18 @@
-import { getImages } from './js/imgApi';
+import { PixabayAPI } from './js/imgApi';
 import SimpleLightbox from 'simplelightbox';
-import Notiflix from 'notiflix';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import { Notify } from 'notiflix';
+import refs from './js/refs';
 
+const pixabayApi = new PixabayAPI(40);
 const perPage = 40;
 let page = 1;
-let simplelightbox;
-
-const refs = {
-  formEl: document.querySelector('.search-form'),
-  imgsContainer: document.querySelector('.gallery'),
-  btnLoadMoreContainer: document.querySelector('.btn-container'),
-  btnLoadMore: document.querySelector('.load-more'),
-};
+const simplelightbox = new SimpleLightbox('.gallery a');
 
 refs.formEl.addEventListener('submit', onSubmit);
 refs.btnLoadMore.addEventListener('click', onClickLoadMore);
 
-function onSubmit(e) {
+async function onSubmit(e) {
   e.preventDefault();
   refs.imgsContainer.innerHTML = '';
   refs.btnLoadMoreContainer.style.display = 'none';
@@ -25,39 +20,54 @@ function onSubmit(e) {
   page = 1;
 
   const inputValue = e.target.elements.searchQuery.value.trim();
-  if (inputValue === '') {
-    Notiflix.Notify.failure(
-      'The search string cannot be empty. Please specify your search query.'
-    );
-    return;
+
+  if (!inputValue) {
+    return Notify.failure('Your query is empty!=)');
   }
 
-  localStorage.setItem('inputValue', inputValue);
-  getImageArray(localStorage.getItem('inputValue'), page);
-  refs.btnLoadMore.disabled = false;
+  pixabayApi.query = inputValue;
+
+  try {
+    const response = await pixabayApi.getImages();
+
+    if (response.hits.length === 0) {
+      Notify.warning(`No results ${searchQuery}`);
+      refs.list.innerHTML = '';
+      return;
+    }
+
+    Notify.success(`We find ${response.total} images`);
+
+    refs.imgsContainer.innerHTML = createMurkup(response.hits);
+
+    if (response.hits.length >= pixabayApi.perPage) {
+      refs.btnLoadMoreContainer.style.display = 'block';
+    }
+  } catch (error) {
+    Notify.failure('Oppps, something wrong!');
+  }
 }
 
-function onClickLoadMore(e) {
+async function onClickLoadMore(e) {
   e.preventDefault();
 
-  page += 1;
+  pixabayApi.page += 1;
 
-  getImageArray(localStorage.getItem('inputValue'), page);
-}
+  try {
+    const response = await pixabayApi.getImages();
 
-async function getImageArray(query, page) {
-  const data = await getImages(query, page, perPage);
-
-  if (page * perPage >= data.totalHits) {
-    Notiflix.Notify.failure(
-      'Sorry, there are no images matching your search query. Please try again.'
+    refs.imgsContainer.insertAdjacentHTML(
+      'beforeend',
+      createMurkup(response.hits)
     );
-    refs.btnLoadMore.disabled = true;
-  } else {
-    refs.imgsContainer.insertAdjacentHTML('beforeend', createMurkup(data.hits));
-    refs.btnLoadMoreContainer.style.display = 'block';
-    refs.formEl.reset();
-    simpleLightBox = new SimpleLightbox('.gallery a').refresh();
+
+    if (pixabayApi.page * pixabayApi.perPage >= response.totalHits) {
+      refs.btnLoadMoreContainer.style.display = 'none';
+      Notify.info("We're sorry, but you've reached the end of search results.");
+    }
+  } catch (error) {
+    console.log(error);
+    Notify.failure('Oppps, something wrong!');
   }
 }
 
@@ -65,8 +75,6 @@ function createMurkup(arr) {
   return arr
     .map(
       ({
-        webformatWidth,
-        webfirmatHeight,
         webformatURL,
         largeImageURL,
         tags,
