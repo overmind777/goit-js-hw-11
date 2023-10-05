@@ -39,6 +39,7 @@ async function onSubmit(e) {
     Notify.success(`We find ${response.total} images`);
 
     refs.imgsContainer.innerHTML = createMurkup(response.hits);
+    simplelightbox.refresh();
 
     if (response.hits.length >= pixabayApi.perPage) {
       refs.btnLoadMoreContainer.style.display = 'block';
@@ -62,6 +63,7 @@ async function onClickLoadMore(e) {
       'beforeend',
       createMurkup(response.hits)
     );
+    simplelightbox.refresh();
 
     if (pixabayApi.page * pixabayApi.perPage >= response.totalHits) {
       refs.btnLoadMoreContainer.style.display = 'none';
