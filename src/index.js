@@ -45,6 +45,8 @@ async function onSubmit(e) {
     }
   } catch (error) {
     Notify.failure('Oppps, something wrong!');
+  } finally {
+    refs.formEl.reset();
   }
 }
 
