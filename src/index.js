@@ -17,7 +17,7 @@ async function onSubmit(e) {
   refs.imgsContainer.innerHTML = '';
   refs.btnLoadMoreContainer.style.display = 'none';
 
-  page = 1;
+  pixabayApi.page = 1;
 
   const inputValue = e.target.elements.searchQuery.value.trim();
 
